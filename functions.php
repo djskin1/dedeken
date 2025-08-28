@@ -150,18 +150,18 @@ add_action('init', function () {
 
         $login_or_email = sanitize_text_field($_POST['user_login'] ?? '');
         if ( empty($login_or_email) ) {
-            wp_safe_redirect( add_query_arg('lost', 'empty', home_url('admin/lost-password')) ); exit;
+            wp_safe_redirect( add_query_arg('lost', 'empty', home_url('admin/lost-password.php')) ); exit;
         }
 
         // Laat WP de mail & key genereren
         $user = get_user_by(str_contains($login_or_email, '@') ? 'email' : 'login', $login_or_email);
         if ( !$user ) {
-            wp_safe_redirect( add_query_arg('lost', 'notfound', home_url('admin/lost-password')) ); exit;
+            wp_safe_redirect( add_query_arg('lost', 'notfound', home_url('admin/lost-password.php')) ); exit;
         }
 
         $key = get_password_reset_key($user);
         if ( is_wp_error($key) ) {
-            wp_safe_redirect( add_query_arg('lost', 'error', home_url('admin/lost-password')) ); exit;
+            wp_safe_redirect( add_query_arg('lost', 'error', home_url('admin/lost-password.php')) ); exit;
         }
 
         // Bouw je eigen e-mail met een link naar je custom reset pagina
@@ -176,7 +176,7 @@ add_action('init', function () {
             "Hallo,\n\nKlik op onderstaande link om je wachtwoord te resetten:\n\n{$reset_url}\n\nAls je dit niet hebt aangevraagd, kun je deze mail negeren."
         );
 
-        wp_safe_redirect( add_query_arg('lost', $sent ? 'sent' : 'mailfail', home_url('admin/lost-password')) );
+        wp_safe_redirect( add_query_arg('lost', $sent ? 'sent' : 'mailfail', home_url('admin/lost-password.php')) );
         exit;
     }
 
@@ -190,12 +190,12 @@ add_action('init', function () {
         $pass2 = $_POST['pass2'] ?? '';
 
         if ( empty($login) || empty($key) || empty($pass1) || $pass1 !== $pass2 ) {
-            wp_safe_redirect( add_query_arg(array('rp' => 'invalid'), home_url('admin/reset-password')) ); exit;
+            wp_safe_redirect( add_query_arg(array('rp' => 'invalid'), home_url('admin/reset-password.php')) ); exit;
         }
 
         $user = check_password_reset_key($key, $login);
         if ( is_wp_error($user) ) {
-            wp_safe_redirect( add_query_arg(array('rp' => 'badkey'), home_url('admin/reset-password')) ); exit;
+            wp_safe_redirect( add_query_arg(array('rp' => 'badkey'), home_url('admin/reset-password.php')) ); exit;
         }
 
         reset_password($user, $pass1);
@@ -218,7 +218,7 @@ add_action('template_redirect', function () {
 add_filter('show_admin_bar', '__return_false');
 add_filter('wp_nav_menu_items', 'add_search_to_menu', 10, 2);
 add_filter('login_url', function($url, $redirect){ return add_query_arg('redirect_to', $redirect, home_url('admin/login')); }, 10, 2);
-add_filter('lostpassword_url', function($url, $redirect){ return home_url('admin/lost-password'); }, 10, 2);
+add_filter('lostpassword_url', function($url, $redirect){ return home_url('admin/lost-password.php'); }, 10, 2);
 add_filter('register_url', function($url){ return home_url('admin/register'); }, 10, 1);
 
 
