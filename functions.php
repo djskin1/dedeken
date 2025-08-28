@@ -99,6 +99,201 @@ add_action('init', function() {
 });
 
 //admin
+    //instellingen
+const AUTH_LOGIN_SLUG = 'inloggen';
+const AUTH_REG_SLUG = 'registreren';
+const AUTH_LOSTPW_SLUG = 'wachtwoord-vergeten';
+const AUTH_TPL_DIR = '/admin';
+
+//query vars
+add_filter('query_vars', function ($vars) {
+    $vars[] = 'custom_login';
+    $vars[] = 'custom_register';
+    $vars[] = 'custom_lostpw';
+    return $vars;
+});
+
+//rewrite rules
+add_action('init', function() {
+    add_rewrite_rule('^' . AUTH_LOGIN_SLUG . '/?$', 'index.php?custom_login=1', 'top');
+    add_rewrite_rule('^' . AUTH_REG_SLUG . '/?$', 'index.php?custom_register=1', 'top');
+    add_rewrite_rule('^' . AUTH_LOSTPW_SLUG . '/?$', 'index.php?custom_lostpw=1', 'top');
+});
+
+//flush
+add_action('after_switch_theme', function() {
+    flush_rewrite_rules();
+});
+
+//laad juiste template
+add_filter('template_include', function ($template) {
+    $base = get_template_directory() . AUTH_TPL_DIR;
+
+    if (get_query_var('custom_login')) {
+        $tpl = $base . '/login.php';
+        if (file_exists($tpl)) return $tpl;
+    }
+    if (get_query_var('custom_register')) {
+        $tpl = $base . '/register.php';
+        if (file_exists($tpl)) return $tpl;
+    }
+    if (get_query_var('custom_lostpw')) {
+        $tpl = $base . '/lost-password.php';
+        if (file_exists($tpl)) return $tpl;
+    }
+    return $template;
+});
+
+// handelers
+ //login
+add_action('admin_post_nopriv_custom_login', function() {
+    check_admin_referer('custom_login_nonce');
+
+    $creds = [
+        'user_login' => sanitize_user($_POST['log'] ?? ''),
+        'user_password' => $_POST['pwd'] ?? '',
+        'remember' => isset($_POST['remember']),
+    ];
+
+    $user = wp_signon($creds, is_ssl());
+    if (is_wp_error($user)) {
+        $msg = rawurldecode($user->get_error_message());
+        wp_safe_redirect(add_query_arg('auth_error', $msg, home_url('/' . AUTH_LOGIN_SLUG . '/')));
+        exit; 
+    }
+
+    $redirect = !empty($_POST['redirect_to']) ? esc_url_raw($_POST['redirect_to']) :
+    wp_safe_redirect($redirect);
+    exit; 
+});
+
+//register
+add_action('admin_post_nopriv_custom_register', function() {
+    check_admin_referer('custom_register_nonce');
+
+    $username = sanitize_user($_POST['user_login'] ?? '');
+    $email = sanitize_email($_POST['user_email'] ?? '');
+    $pass1 = $_POST['user_pass'] ?? '';
+    $pass2 = $_POST['user_pass_confirm'] ?? '';
+
+    if ($username === '' || $email === '' || $pass1 === '' || $pass1 !== $pass2 || !is_email($email)) {
+        $err = rawurlencode(__('Controleer je invoer.','theme'));
+        wp_safe_redirect(add_query_arg(';auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')))
+        exit;
+    }
+
+    if (username_exists($username) || email_exists($email)) {
+        $err = rawurlencode(__('Gebruikersnaam of e-mail bestaat al.','theme'));
+        wp_safe_redirect(add_query_arg('auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')));
+        exit;
+    }
+
+    $user_id = wp_create_user($username, $pass1, $email);
+    if (is_wp_error($user_id)) {
+        $err = rawurlencode($user_id->get_error_message());
+        wp_safe_redirect(add_query_arg('auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')));
+        exit;
+    }
+
+    wp_set_current_user($user_id);
+    wp_set_auth_cookie($user_id);
+    wp_safe_redirect(home_url());
+    exit;
+});
+
+// ====== Form handlers (admin-post.php) ======
+
+
+// Login handler (guest)
+add_action('admin_post_nopriv_custom_login', function () {
+check_admin_referer('custom_login_nonce');
+
+
+$creds = [
+'user_login' => isset($_POST['log']) ? sanitize_user(wp_unslash($_POST['log'])) : '',
+'user_password' => isset($_POST['pwd']) ? $_POST['pwd'] : '',
+'remember' => !empty($_POST['remember'])
+];
+
+
+$user = wp_signon($creds, is_ssl());
+
+
+if (is_wp_error($user)) {
+$msg = rawurlencode($user->get_error_message());
+wp_safe_redirect(add_query_arg('auth_error', $msg, home_url('/' . AUTH_LOGIN_SLUG . '/')));
+exit;
+}
+
+
+$redirect = !empty($_POST['redirect_to']) ? esc_url_raw(wp_unslash($_POST['redirect_to'])) : admin_url();
+wp_safe_redirect($redirect);
+exit;
+});
+
+
+// Registratie handler (guest)
+add_action('admin_post_nopriv_custom_register', function () {
+check_admin_referer('custom_register_nonce');
+
+
+// Eenvoudige honeypot
+if (!empty($_POST['website'])) {
+wp_safe_redirect(add_query_arg('auth_error', rawurlencode(__('Ongeldige inzending.','theme')), home_url('/' . AUTH_REG_SLUG . '/')));
+exit;
+}
+
+
+$username = isset($_POST['user_login']) ? sanitize_user(wp_unslash($_POST['user_login'])) : '';
+$email = isset($_POST['user_email']) ? sanitize_email(wp_unslash($_POST['user_email'])) : '';
+$pass1 = isset($_POST['user_pass']) ? $_POST['user_pass'] : '';
+$pass2 = isset($_POST['user_pass_confirm']) ? $_POST['user_pass_confirm'] : '';
+
+
+// Validaties
+if ($username === '' || $email === '' || $pass1 === '') {
+$err = rawurlencode(__('Vul alle verplichte velden in.','theme'));
+wp_safe_redirect(add_query_arg('auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')));
+exit;
+}
+if (!is_email($email)) {
+$err = rawurlencode(__('Ongeldig e‑mailadres.','theme'));
+wp_safe_redirect(add_query_arg('auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')));
+exit;
+}
+if ($pass1 !== $pass2)) {
+$err = rawurlencode(__('Wachtwoorden komen niet overeen.','theme'));
+wp_safe_redirect(add_query_arg('auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')));
+exit;
+}
+if (username_exists($username) || email_exists($email)) {
+$err = rawurlencode(__('Gebruikersnaam of e‑mail bestaat al.','theme'));
+wp_safe_redirect(add_query_arg('auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')));
+exit;
+}
+
+
+$user_id = wp_create_user($username, $pass1, $email);
+
+
+if (is_wp_error($user_id)) {
+$err = rawurlencode($user_id->get_error_message());
+wp_safe_redirect(add_query_arg('auth_error', $err, home_url('/' . AUTH_REG_SLUG . '/')));
+exit;
+}
+
+
+// Automatisch inloggen na registratie (optioneel)
+wp_set_current_user($user_id);
+wp_set_auth_cookie($user_id);
+
+
+// Redirect na registratie
+$redirect = home_url('/');
+wp_safe_redirect($redirect);
+exit;
+});
+
 
 //filters
 add_filter('show_admin_bar', '__return_false');
