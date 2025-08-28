@@ -99,10 +99,127 @@ add_action('init', function() {
 });
 
 //admin
+add_action('init', function () {
+    // Login
+    if ( isset($_POST['action']) && $_POST['action'] === 'custom_login' ) {
+        check_admin_referer('custom_login_nonce');
+
+        $creds = array(
+            'user_login'    => sanitize_text_field($_POST['log'] ?? ''),
+            'user_password' => $_POST['pwd'] ?? '',
+            'remember'      => !empty($_POST['rememberme']),
+        );
+
+        $user = wp_signon($creds, is_ssl());
+        if ( is_wp_error($user) ) {
+            wp_safe_redirect( add_query_arg('login', 'failed', home_url('admin/login')) );
+        } else {
+            // Naar dashboard of gewenste pagina
+            wp_safe_redirect( apply_filters('custom_login_redirect', admin_url(), $user) );
+        }
+        exit;
+    }
+
+    // Register
+    if ( isset($_POST['action']) && $_POST['action'] === 'custom_register' ) {
+        check_admin_referer('custom_register_nonce');
+
+        $username = sanitize_user($_POST['user_login'] ?? '');
+        $email    = sanitize_email($_POST['user_email'] ?? '');
+        $pass1    = $_POST['user_pass'] ?? '';
+        $pass2    = $_POST['user_pass_confirm'] ?? '';
+
+        if ( empty($username) || empty($email) || empty($pass1) || $pass1 !== $pass2 ) {
+            wp_safe_redirect( add_query_arg('register', 'invalid', home_url('admin/register')) ); exit;
+        }
+
+        $user_id = wp_create_user($username, $pass1, $email);
+        if ( is_wp_error($user_id) ) {
+            wp_safe_redirect( add_query_arg('register', 'failed', home_url('admin/register')) ); exit;
+        }
+
+        // (Optioneel) auto-login na registratie
+        wp_set_current_user($user_id);
+        wp_set_auth_cookie($user_id, true);
+        wp_safe_redirect( home_url('/') ); exit;
+    }
+
+    // Lost password (verstuur reset e-mail)
+    if ( isset($_POST['action']) && $_POST['action'] === 'custom_lostpassword' ) {
+        check_admin_referer('custom_lostpassword_nonce');
+
+        $login_or_email = sanitize_text_field($_POST['user_login'] ?? '');
+        if ( empty($login_or_email) ) {
+            wp_safe_redirect( add_query_arg('lost', 'empty', home_url('admin/lost-password')) ); exit;
+        }
+
+        // Laat WP de mail & key genereren
+        $user = get_user_by(str_contains($login_or_email, '@') ? 'email' : 'login', $login_or_email);
+        if ( !$user ) {
+            wp_safe_redirect( add_query_arg('lost', 'notfound', home_url('admin/lost-password')) ); exit;
+        }
+
+        $key = get_password_reset_key($user);
+        if ( is_wp_error($key) ) {
+            wp_safe_redirect( add_query_arg('lost', 'error', home_url('admin/lost-password')) ); exit;
+        }
+
+        // Bouw je eigen e-mail met een link naar je custom reset pagina
+        $reset_url = add_query_arg(array(
+            'key'   => rawurlencode($key),
+            'login' => rawurlencode($user->user_login),
+        ), home_url('/admin/reset-password'));
+
+        $sent = wp_mail(
+            $user->user_email,
+            sprintf('[%s] Wachtwoord resetten', wp_specialchars_decode(get_option('blogname'), ENT_QUOTES)),
+            "Hallo,\n\nKlik op onderstaande link om je wachtwoord te resetten:\n\n{$reset_url}\n\nAls je dit niet hebt aangevraagd, kun je deze mail negeren."
+        );
+
+        wp_safe_redirect( add_query_arg('lost', $sent ? 'sent' : 'mailfail', home_url('admin/lost-password')) );
+        exit;
+    }
+
+    // Reset password (via link met key + login)
+    if ( isset($_POST['action']) && $_POST['action'] === 'custom_resetpassword' ) {
+        check_admin_referer('custom_resetpassword_nonce');
+
+        $login = sanitize_user($_POST['rp_login'] ?? '');
+        $key   = sanitize_text_field($_POST['rp_key'] ?? '');
+        $pass1 = $_POST['pass1'] ?? '';
+        $pass2 = $_POST['pass2'] ?? '';
+
+        if ( empty($login) || empty($key) || empty($pass1) || $pass1 !== $pass2 ) {
+            wp_safe_redirect( add_query_arg(array('rp' => 'invalid'), home_url('admin/reset-password')) ); exit;
+        }
+
+        $user = check_password_reset_key($key, $login);
+        if ( is_wp_error($user) ) {
+            wp_safe_redirect( add_query_arg(array('rp' => 'badkey'), home_url('admin/reset-password')) ); exit;
+        }
+
+        reset_password($user, $pass1);
+
+        // Klaar → naar login met melding
+        wp_safe_redirect( add_query_arg('reset', 'done', home_url('admin/login')) ); exit;
+    }
+});
+
+add_action('template_redirect', function () {
+    $req = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+    if ($req === 'garagebeheer') { // of jouw WPS slug
+        wp_safe_redirect( home_url('admin/login') );
+        exit;
+    }
+});
 
 
 //filters
 add_filter('show_admin_bar', '__return_false');
 add_filter('wp_nav_menu_items', 'add_search_to_menu', 10, 2);
+add_filter('login_url', function($url, $redirect){ return add_query_arg('redirect_to', $redirect, home_url('admin/login')); }, 10, 2);
+add_filter('lostpassword_url', function($url, $redirect){ return home_url('admin/lost-password'); }, 10, 2);
+add_filter('register_url', function($url){ return home_url('admin/register'); }, 10, 1);
+
 
 ?>
