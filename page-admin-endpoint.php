@@ -8,7 +8,7 @@ $parent_slug = get_post_field('post_name', wp_get_post_parent_id(get_the_ID()));
 $current_slug = get_post_field('post_name', get_the_ID());
 
 // Controleer of deze pagina echt onder /admin (of jouw ouder) hangt
-if ( $parent_slug !== 'admin' ) {
+if ( $parent_slug !== 'auth' ) {
     echo '<p>Misconfiguratie: deze template verwacht een subpagina van /admin.</p>';
     get_footer();
     exit;

@@ -112,7 +112,7 @@ add_action('init', function () {
 
         $user = wp_signon($creds, is_ssl());
         if ( is_wp_error($user) ) {
-            wp_safe_redirect( add_query_arg('login', 'failed', home_url('admin/login')) );
+            wp_safe_redirect( add_query_arg('login', 'failed', home_url('auth/login')) );
         } else {
             // Naar dashboard of gewenste pagina
             wp_safe_redirect( apply_filters('custom_login_redirect', admin_url(), $user) );
@@ -130,12 +130,12 @@ add_action('init', function () {
         $pass2    = $_POST['user_pass_confirm'] ?? '';
 
         if ( empty($username) || empty($email) || empty($pass1) || $pass1 !== $pass2 ) {
-            wp_safe_redirect( add_query_arg('register', 'invalid', home_url('admin/register')) ); exit;
+            wp_safe_redirect( add_query_arg('register', 'invalid', home_url('auth/register')) ); exit;
         }
 
         $user_id = wp_create_user($username, $pass1, $email);
         if ( is_wp_error($user_id) ) {
-            wp_safe_redirect( add_query_arg('register', 'failed', home_url('admin/register')) ); exit;
+            wp_safe_redirect( add_query_arg('register', 'failed', home_url('auth/register')) ); exit;
         }
 
         // (Optioneel) auto-login na registratie
@@ -150,25 +150,25 @@ add_action('init', function () {
 
         $login_or_email = sanitize_text_field($_POST['user_login'] ?? '');
         if ( empty($login_or_email) ) {
-            wp_safe_redirect( add_query_arg('lost', 'empty', home_url('admin/lost-password.php')) ); exit;
+            wp_safe_redirect( add_query_arg('lost', 'empty', home_url('auth/lost-password.php')) ); exit;
         }
 
         // Laat WP de mail & key genereren
         $user = get_user_by(str_contains($login_or_email, '@') ? 'email' : 'login', $login_or_email);
         if ( !$user ) {
-            wp_safe_redirect( add_query_arg('lost', 'notfound', home_url('admin/lost-password.php')) ); exit;
+            wp_safe_redirect( add_query_arg('lost', 'notfound', home_url('auth/lost-password.php')) ); exit;
         }
 
         $key = get_password_reset_key($user);
         if ( is_wp_error($key) ) {
-            wp_safe_redirect( add_query_arg('lost', 'error', home_url('admin/lost-password.php')) ); exit;
+            wp_safe_redirect( add_query_arg('lost', 'error', home_url('auth/lost-password.php')) ); exit;
         }
 
         // Bouw je eigen e-mail met een link naar je custom reset pagina
         $reset_url = add_query_arg(array(
             'key'   => rawurlencode($key),
             'login' => rawurlencode($user->user_login),
-        ), home_url('/admin/reset-password'));
+        ), home_url('auth/reset-password'));
 
         $sent = wp_mail(
             $user->user_email,
@@ -176,7 +176,7 @@ add_action('init', function () {
             "Hallo,\n\nKlik op onderstaande link om je wachtwoord te resetten:\n\n{$reset_url}\n\nAls je dit niet hebt aangevraagd, kun je deze mail negeren."
         );
 
-        wp_safe_redirect( add_query_arg('lost', $sent ? 'sent' : 'mailfail', home_url('admin/lost-password.php')) );
+        wp_safe_redirect( add_query_arg('lost', $sent ? 'sent' : 'mailfail', home_url('auth/lost-password.php')) );
         exit;
     }
 
@@ -190,36 +190,80 @@ add_action('init', function () {
         $pass2 = $_POST['pass2'] ?? '';
 
         if ( empty($login) || empty($key) || empty($pass1) || $pass1 !== $pass2 ) {
-            wp_safe_redirect( add_query_arg(array('rp' => 'invalid'), home_url('admin/reset-password.php')) ); exit;
+            wp_safe_redirect( add_query_arg(array('rp' => 'invalid'), home_url('auth/reset-password.php')) ); exit;
         }
 
         $user = check_password_reset_key($key, $login);
         if ( is_wp_error($user) ) {
-            wp_safe_redirect( add_query_arg(array('rp' => 'badkey'), home_url('admin/reset-password.php')) ); exit;
+            wp_safe_redirect( add_query_arg(array('rp' => 'badkey'), home_url('auth/reset-password.php')) ); exit;
         }
 
         reset_password($user, $pass1);
 
         // Klaar → naar login met melding
-        wp_safe_redirect( add_query_arg('reset', 'done', home_url('admin/login')) ); exit;
+        wp_safe_redirect( add_query_arg('reset', 'done', home_url('auth/login')) ); exit;
     }
 });
 
 add_action('template_redirect', function () {
     $req = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
     if ($req === 'garagebeheer') { // of jouw WPS slug
-        wp_safe_redirect( home_url('admin/login') );
+        wp_safe_redirect( home_url('auth/login') );
         exit;
     }
 });
+
+//contact
+
+// 1) ACF Options Page
+if ( function_exists('acf_add_options_page') ) {
+    acf_add_options_page([
+        'page_title' => 'Contact instellingen',
+        'menu_title' => 'Contact instellingen',
+        'menu_slug'  => 'contact-instellingen',
+        'capability' => 'manage_options',
+        'redirect'   => false,
+        'position'   => 61,
+        'icon_url'   => 'dashicons-location-alt',
+    ]);
+}
+
+// 2) Laad Google Maps API key uit ACF Option (veld: google_maps_api_key)
+add_filter('acf/fields/google_map/api', function ($api) {
+    $key = function_exists('get_field') ? get_field('google_maps_api_key', 'option') : '';
+    if ($key) $api['key'] = $key;
+    return $api;
+});
+
+// 3) Frontend assets voor de kaart (eenvoudige init + marker)
+add_action('wp_enqueue_scripts', function () {
+    // Laat ACF zelf de Maps API laden (via veld + filter hierboven).
+    // Onze eigen init script:
+    wp_register_script(
+        'acf-contact-maps',
+        get_stylesheet_directory_uri() . '/assets/js/acf-contact-maps.js',
+        [], // laadt na Google API door ACF
+        '1.0',
+        true
+    );
+    wp_enqueue_script('acf-contact-maps');
+    wp_register_style(
+        'acf-contact-css',
+        get_stylesheet_directory_uri() . '/assets/css/acf-contact.css',
+        [],
+        '1.0'
+    );
+    wp_enqueue_style('acf-contact-css');
+});
+
 
 
 //filters
 add_filter('show_admin_bar', '__return_false');
 add_filter('wp_nav_menu_items', 'add_search_to_menu', 10, 2);
-add_filter('login_url', function($url, $redirect){ return add_query_arg('redirect_to', $redirect, home_url('admin/login')); }, 10, 2);
-add_filter('lostpassword_url', function($url, $redirect){ return home_url('admin/lost-password.php'); }, 10, 2);
-add_filter('register_url', function($url){ return home_url('admin/register'); }, 10, 1);
+add_filter('login_url', function($url, $redirect){ return add_query_arg('redirect_to', $redirect, home_url('auth/login')); }, 10, 2);
+add_filter('lostpassword_url', function($url, $redirect){ return home_url('auth/lost-password'); }, 10, 2);
+add_filter('register_url', function($url){ return home_url('auth/register'); }, 10, 1);
 
 
 ?>
