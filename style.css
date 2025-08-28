@@ -2,8 +2,17 @@
 Theme Name: De deken
 Theme URI: https://github.com/djskin1/dedeken
 Author: Djskinproductions
+Author URI: https://djskinproductions.nl
+Description: Legt de nadruk op eenvoud en aanpassingsvermogen. Biedt flexibele ontwerpmogelijkheden met patronen voor diverse paginatypen (diensten, landingspagina’s), geschikt voor blogs, portfolio’s, online magazines en zakelijke sites. Ondersteunt internationale typografie, kleurpaletten en toegankelijkheid.
 Version: 1.0.0
 GitHub Theme URI: djskin1/dedeken
+Requires at least: 6.0
+Tested up to: 6.8.2
+Requires PHP: 7.4
+License: GNU General Public License v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: De Deken
+Tags: one-column, custom-colors, custom-menu, custom-logo, editor-style, featured-images, site-editor, block-patterns, rtl-language-support, sticky-posts, threaded-comments, translation-ready, wide-blocks, block-styles, style-variations, accessibility-ready, blog, portfolio, news
 */
 
 
