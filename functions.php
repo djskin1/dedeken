@@ -23,8 +23,25 @@ add_action('wp_enqueue_scripts', function() {
     wp_enqueue_style('fontawesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css', [], '6.5.1');
 });
 
-//elementor
+//Page Header
+function mijn_theme_customize_register( $wp_customize ) {
+    // Instelling toevoegen
+    $wp_customize->add_setting( 'header_logo_text', array(
+        'default'   => 'De Deken & Zn B.V.',
+        'transport' => 'refresh',
+    ));
 
+    // Control toevoegen
+    $wp_customize->add_control( 'header_logo_text_control', array(
+        'label'    => __( 'Fallback Logo Tekst', 'mijn-theme' ),
+        'section'  => 'title_tagline', // zelfde sectie als Site Identity
+        'settings' => 'header_logo_text',
+        'type'     => 'text',
+    ));
+}
+add_action( 'customize_register', 'mijn_theme_customize_register' );
+
+/* Menu */
 add_action('after_setup_theme', function() {
     //basis
     add_theme_support('title-tag');

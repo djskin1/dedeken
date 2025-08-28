@@ -11,11 +11,13 @@
   <header class="site-header bg-teal text-white py-2">
       <nav class="navbar navbar-expand-lg navbar-dark" style="background:#274D4D;">
         <div class="container d-flex align-items-center justify-content-between">
-           <a href="<?php echo esc_url(home_url('/')); ?>" class="logo>
-        <?php if(has_custom_logo()) { the_custom_logo(); } else { ?>
-          <strong>De Deken &amp; Zn B.V.</strong>
-        <?php } ?>
-      </a>
+           <a href="<?php echo esc_url(home_url('/')); ?>" class="logo">
+              <?php if ( has_custom_logo() ) { 
+                  the_custom_logo(); 
+              } else { ?>
+              <strong><?php echo esc_html( get_theme_mod( 'header_logo_text', 'De Deken & Zn B.V.' ) ); ?></strong>
+              <?php } ?>
+            </a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
             <span class="navbar-toggler-icon"></span>
           </button>
