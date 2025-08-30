@@ -256,6 +256,22 @@ add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('acf-contact-css');
 });
 
+add_action('wp_enqueue_scripts', function () {
+    // Leaflet CSS & JS vanaf CDN
+    wp_enqueue_style('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4');
+    wp_enqueue_script('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true);
+
+    // Ons script
+    wp_enqueue_script(
+        'leaflet-init',
+        get_stylesheet_directory_uri() . '/assets/js/leaflet-init.js',
+        ['leaflet-js'],
+        '1.0',
+        true
+    );
+});
+
+
 
 
 //filters
