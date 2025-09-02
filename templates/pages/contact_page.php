@@ -36,8 +36,9 @@ if ($locations) {
   <div class="contact-right">
     <?php if ($markers): ?>
       <div id="leaflet-map"
-           style="width:100%;height:400px"
-           data-markers='<?php echo json_encode($markers); ?>'></div>
+         style="width:100%;height:400px"
+        data-markers='<?php echo esc_attr( wp_json_encode( $markers ) ); ?>'>
+      </div>
     <?php endif; ?>
 
     <div class="cf7-wrap">
