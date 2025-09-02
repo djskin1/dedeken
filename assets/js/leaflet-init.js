@@ -1,18 +1,38 @@
 document.addEventListener('DOMContentLoaded', function(){
-  document.querySelectorAll('.leaflet-map').forEach(function(el){
-    var lat = parseFloat(el.dataset.lat);
-    var lng = parseFloat(el.dataset.lng);
-    if (isNaN(lat) || isNaN(lng)) return;
+  var el = document.getElementById('leaflet-map');
+  if(!el) return;
 
-    // Maak de kaart
-    var map = L.map(el).setView([lat, lng], 15);
+  var markers = [];
+  try {
+    markers = JSON.parse(el.dataset.markers || '[]');
+  } catch(e) {
+    console.error('Markers JSON parse error', e, el.dataset.markers);
+    return;
+  }
+  if (!markers.length) {
+    console.warn('Geen markers gevonden');
+    return;
+  }
 
-    // OSM tiles (gratis)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/">OSM</a>'
-    }).addTo(map);
+  // Startpositie (eerste marker)
+  var map = L.map(el).setView([markers[0].lat, markers[0].lng], 13);
 
-    // Marker
-    L.marker([lat, lng]).addTo(map);
+  // OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/">OSM</a>'
+  }).addTo(map);
+
+  var bounds = [];
+  markers.forEach(function(m){
+    if (typeof m.lat !== 'number' || typeof m.lng !== 'number') return;
+    var mk = L.marker([m.lat, m.lng]).addTo(map);
+    if (m.title || m.address) {
+      mk.bindPopup(
+        (m.title ? '<b>'+m.title+'</b><br>' : '') + (m.address || '')
+      );
+    }
+    bounds.push([m.lat, m.lng]);
   });
+
+  if (bounds.length > 1) map.fitBounds(bounds, {padding:[30,30]});
 });

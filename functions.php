@@ -228,40 +228,23 @@ if ( function_exists('acf_add_options_page') ) {
     ]);
 }
 
-// 2) Laad Google Maps API key uit ACF Option (veld: google_maps_api_key)
-add_filter('acf/fields/google_map/api', function ($api) {
-    $key = function_exists('get_field') ? get_field('google_maps_api_key', 'option') : '';
-    if ($key) $api['key'] = $key;
-    return $api;
-});
-
-// 3) Frontend assets voor de kaart (eenvoudige init + marker)
 add_action('wp_enqueue_scripts', function () {
-    // Laat ACF zelf de Maps API laden (via veld + filter hierboven).
-    // Onze eigen init script:
-    wp_register_script(
-        'acf-contact-maps',
-        get_stylesheet_directory_uri() . '/assets/js/acf-contact-maps.js',
-        [], // laadt na Google API door ACF
-        '1.0',
+    // Leaflet CSS + JS (CDN)
+    wp_enqueue_style(
+        'leaflet-css',
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+        [],
+        '1.9.4'
+    );
+    wp_enqueue_script(
+        'leaflet-js',
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+        [],
+        '1.9.4',
         true
     );
-    wp_enqueue_script('acf-contact-maps');
-    wp_register_style(
-        'acf-contact-css',
-        get_stylesheet_directory_uri() . '/assets/css/acf-contact.css',
-        [],
-        '1.0'
-    );
-    wp_enqueue_style('acf-contact-css');
-});
 
-add_action('wp_enqueue_scripts', function () {
-    // Leaflet CSS & JS vanaf CDN
-    wp_enqueue_style('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', [], '1.9.4');
-    wp_enqueue_script('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', [], '1.9.4', true);
-
-    // Ons script
+    // Jouw init script
     wp_enqueue_script(
         'leaflet-init',
         get_stylesheet_directory_uri() . '/assets/js/leaflet-init.js',
@@ -269,9 +252,13 @@ add_action('wp_enqueue_scripts', function () {
         '1.0',
         true
     );
+
+    // (optioneel) basis CSS
+    wp_add_inline_style('leaflet-css', '
+      #leaflet-map{width:100%;height:400px}
+      .leaflet-container{z-index:1}
+    ');
 });
-
-
 
 
 //filters
